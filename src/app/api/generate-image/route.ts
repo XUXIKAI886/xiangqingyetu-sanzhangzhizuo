@@ -22,6 +22,22 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('开始调用图片生成 API...');
+
+    // 构建完整的图片生成指令
+    const imageGenerationPrompt = `你是一个专业的电商海报设计师。请根据以下提示词和参考产品图片，生成一张9:16竖版的美团外卖详情页海报。
+
+【重要要求】
+1. 必须严格按照提示词中的设计要求生成图片
+2. 必须参考上传的产品图片，在海报中展示该产品
+3. 保持产品的真实外观，不要改变产品的颜色、形状、包装设计
+4. 按照提示词中的排版布局要求放置文字和元素
+5. 生成高质量、专业的电商海报图片
+
+【设计提示词】
+${copyPrompt}
+
+请直接生成图片，不需要文字回复。`;
+
     const response = await fetchWithRetry(`${API_URL}?key=${API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -29,7 +45,7 @@ export async function POST(request: NextRequest) {
         contents: [{
           role: 'user',
           parts: [
-            { text: copyPrompt },
+            { text: imageGenerationPrompt },
             {
               inline_data: {
                 mime_type: 'image/jpeg',
