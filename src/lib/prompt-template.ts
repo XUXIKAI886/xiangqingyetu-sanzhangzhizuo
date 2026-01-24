@@ -102,4 +102,60 @@ AI推荐依据：
 - 所有海报必须使用相同的配色系统（从产品图提取）
 - 所有海报必须保持品牌调性一致
 - LOGO在每张海报中位置统一（左上角）
-- 中英文排版格式在所有海报中保持一致`;
+- 中英文排版格式在所有海报中保持一致
+
+**输出格式示例**
+
+【识别报告】（先输出）
+基于上传的产品图片，识别结果如下：
+品牌信息：品牌名称、LOGO特点
+产品信息：产品类型、具体产品、产品规格
+核心卖点（从包装提取）：5个卖点，中英文
+配色方案：主色调、辅助色、点缀色（带HEX色值）
+设计风格：包装风格、主要元素、字体风格、整体调性
+目标受众：年龄段、用户画像、审美偏好
+产品参数（从包装提取）：净含量、成分、营养成分、适用阶段、保质期、储存方式
+
+### 海报01｜主KV视觉（Hero Visual）示例
+
+提示词（中文）：
+9:16竖版高端艺术海报，水彩插画风格。柔和自然光，温暖奶白色背景带有淡淡水彩晕染。画面中心展示产品实物，严格还原上传的产品图片的所有设计元素。
+
+产品展示（严格还原上传图片）：
+产品包装必须完整还原包装的所有设计元素：
+- 包装主体颜色和渐变
+- 正面的品牌LOGO和图案
+- 所有文字内容和位置
+- 底部图标区域
+- 包装材质质感
+
+排版布局（中英文双语设计）：
+左上角：品牌logo（小号，约占画面5%宽度）
+顶部居中：
+- 大标题（水彩笔触质感，中英文堆叠排版）：
+  - 第一行：中文标题（主色调，粗衬线字体，字号占画面宽度30%）
+  - 第二行：英文标题（辅助色，细衬线字体，字号为中文的60%）
+  - 中英文之间间距：中文字号的0.5倍
+- 副标题（下方细线装饰后）：
+  - 中文副标题（主色调，宋体，小号）
+  - 英文副标题（辅助色，无衬线体，更小号，字号为中文的80%）
+
+左侧中部：
+- 玻璃拟态信息卡（圆角20px，半透明白底，模糊度10px，3个要点，图标+中英双语）：
+  - 要点1：图标 + 中文卖点（深灰色，粗体）+ 英文卖点（中灰色，常规体）
+  - 要点2：图标 + 中英文卖点（格式同上）
+  - 要点3：图标 + 中英文卖点（格式同上）
+  - 卡片内边距：上下左右各20px
+  - 要点之间间距：15px
+
+右下角：
+- 圆角药丸CTA按钮（主色调底，白色文字）：
+  - 按钮尺寸：宽度占画面25%，高度为宽度的25%
+  - 按钮圆角：高度的50%（完全圆角）
+  - 文字（中英并列）："立即选购 SHOP NOW →"
+
+负面词 / Negative:
+cluttered, busy, multiple patterns, harsh shadows, watermark, logo repeated, messy text, low quality, blurry, artificial, plastic-looking, cartoon, anime style, wrong packaging design, different colors, modified logo, changed text, simplified design
+
+Prompt (English):
+9:16 vertical premium artistic poster. Soft natural lighting, warm off-white background with subtle watercolor wash edges. Center: Product packaging elegantly displayed, must completely restore all packaging design elements from uploaded image. Layout with bilingual Chinese-English design, glassmorphism info card with key selling points, CTA button at bottom-right.`;
