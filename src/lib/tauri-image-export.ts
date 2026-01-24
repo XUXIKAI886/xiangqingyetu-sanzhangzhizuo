@@ -98,7 +98,7 @@ export async function exportBase64Image(
     // 浏览器环境
     if (!isTauriEnvironment()) {
       const bytes = base64ToUint8Array(base64);
-      const blob = new Blob([bytes.buffer], { type: mimeType });
+      const blob = new Blob([bytes.buffer as ArrayBuffer], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
