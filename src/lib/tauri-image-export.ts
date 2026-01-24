@@ -82,7 +82,42 @@ function base64ToUint8Array(base64: string): Uint8Array {
 }
 
 /**
+ * 将 Base64 图片缩小50%
+ */
+async function resizeBase64Image(base64: string, mimeType: string, scale: number = 0.5): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('无法创建 canvas context'));
+        return;
+      }
+
+      // 计算缩放后的尺寸
+      const newWidth = Math.round(img.width * scale);
+      const newHeight = Math.round(img.height * scale);
+
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+
+      // 绘制缩放后的图片
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+      // 导出为 base64
+      const dataUrl = canvas.toDataURL(mimeType, 0.9);
+      const resizedBase64 = dataUrl.split(',')[1];
+      resolve(resizedBase64);
+    };
+    img.onerror = () => reject(new Error('图片加载失败'));
+    img.src = `data:${mimeType};base64,${base64}`;
+  });
+}
+
+/**
  * 导出 Base64 图片 - 支持浏览器和 Tauri 双环境
+ * 自动缩小50%后导出
  */
 export async function exportBase64Image(
   base64: string,
@@ -95,9 +130,14 @@ export async function exportBase64Image(
   } = options;
 
   try {
+    // 先缩小图片50%
+    console.log('🔄 正在缩放图片...');
+    const resizedBase64 = await resizeBase64Image(base64, mimeType, 0.5);
+    console.log('✅ 图片缩放完成');
+
     // 浏览器环境
     if (!isTauriEnvironment()) {
-      const bytes = base64ToUint8Array(base64);
+      const bytes = base64ToUint8Array(resizedBase64);
       const blob = new Blob([bytes.buffer as ArrayBuffer], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -126,7 +166,7 @@ export async function exportBase64Image(
 
     console.log('📁 [Tauri] 保存路径:', filePath);
 
-    const bytes = base64ToUint8Array(base64);
+    const bytes = base64ToUint8Array(resizedBase64);
     console.log('💾 [Tauri] 文件大小:', bytes.length, 'bytes');
 
     await writeFile(filePath, bytes);
