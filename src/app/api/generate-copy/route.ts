@@ -1,26 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import { fetchWithRetry } from '@/lib/retry';
+import { PROMPT_TEMPLATE } from '@/lib/prompt-template';
 
 const API_URL = 'https://yunwu.ai/v1beta/models/gemini-3-pro-preview:streamGenerateContent';
-
-// 读取 prompt.txt 文件内容
-function getPromptTemplate(): string {
-  try {
-    const promptPath = join(process.cwd(), '..', 'prompt.txt');
-    return readFileSync(promptPath, 'utf-8');
-  } catch {
-    try {
-      const altPath = 'D:\\claude code项目\\详情页图生成\\prompt.txt';
-      return readFileSync(altPath, 'utf-8');
-    } catch {
-      return '';
-    }
-  }
-}
-
-const PROMPT_TEMPLATE = getPromptTemplate();
 
 // 三种海报类型的描述
 const POSTER_TYPES = [
