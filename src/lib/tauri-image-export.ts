@@ -219,7 +219,12 @@ export async function exportBase64ImagesBatch(
         continue;
       }
 
-      const bytes = base64ToUint8Array(img.base64);
+      // 先缩小图片50%
+      const mimeType = img.mimeType || 'image/png';
+      console.log('🔄 [Tauri] 正在缩放图片:', img.filename);
+      const resizedBase64 = await resizeBase64Image(img.base64, mimeType, 0.5);
+
+      const bytes = base64ToUint8Array(resizedBase64);
       await writeFile(filePath, bytes);
       console.log('✅ [Tauri] 保存成功:', filePath);
     }
