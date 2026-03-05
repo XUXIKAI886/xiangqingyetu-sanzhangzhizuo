@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithRetry } from '@/lib/retry';
 
-const API_URL = 'https://yunwu.ai/v1beta/models/gemini-3-pro-image-preview:generateContent';
+const API_URL = 'https://yunwu.ai/v1beta/models/gemini-3.1-flash-image-preview:generateContent';
 
 export async function POST(request: NextRequest) {
   try {

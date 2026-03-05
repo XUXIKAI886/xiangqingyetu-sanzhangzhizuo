@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithRetry } from '@/lib/retry';
 import { PROMPT_TEMPLATE } from '@/lib/prompt-template';
 
-const API_URL = 'https://yunwu.ai/v1beta/models/gemini-3-pro-preview:streamGenerateContent';
+const API_URL = 'https://yunwu.ai/v1beta/models/gemini-3-flash-preview:streamGenerateContent';
 
 // 三种海报类型的描述
 const POSTER_TYPES = [
