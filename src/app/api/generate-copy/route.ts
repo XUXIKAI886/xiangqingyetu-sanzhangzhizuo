@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithRetry } from '@/lib/retry';
 import { PROMPT_TEMPLATE } from '@/lib/prompt-template';
+import { parseCopyResponseText } from '@/lib/copy-response-parser';
 
 const API_URL = 'https://yunwu.ai/v1beta/models/gemini-3-flash-preview:streamGenerateContent';
 
@@ -90,50 +91,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 处理流式响应 - 读取完整响应文本
+    // 读取供应商原始响应，并兼容完整 JSON 与 NDJSON 两种格式
     const responseText = await response.text();
     console.log('API 返回原始数据长度:', responseText.length);
 
-    // 流式响应是多个JSON对象，用换行分隔，解析每个块
-    let fullText = '';
-    const lines = responseText.split('\n').filter(line => line.trim());
-
-    for (const line of lines) {
-      try {
-        const chunk = JSON.parse(line);
-        const parts = chunk.candidates?.[0]?.content?.parts || [];
-        for (const part of parts) {
-          if (part.text && !part.thought) {
-            fullText += part.text;
-          }
-        }
-      } catch {
-        // 忽略无法解析的行
-      }
-    }
-
-    console.log('提取文本长度:', fullText.length);
-    console.log('提取文本预览:', fullText.substring(0, 200));
-
-    if (!fullText) {
-      console.error('未获取到文本内容, 原始响应:', responseText.substring(0, 500));
+    let parsed: ReturnType<typeof parseCopyResponseText>;
+    try {
+      parsed = parseCopyResponseText(responseText);
+    } catch (error) {
+      console.error('解析文案响应失败:', error);
+      console.error('文案原始响应预览:', responseText.substring(0, 500));
       return NextResponse.json(
         { error: '未获取到生成内容', raw: responseText.substring(0, 500) },
         { status: 500 }
       );
     }
 
-    // 解析 JSON 响应
-    const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('无法解析 JSON, 原始文本:', fullText.substring(0, 500));
-      return NextResponse.json(
-        { error: '响应格式错误', raw: fullText.substring(0, 500) },
-        { status: 500 }
-      );
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
     console.log('解析成功, 标题:', parsed.title);
     return NextResponse.json(parsed);
 
