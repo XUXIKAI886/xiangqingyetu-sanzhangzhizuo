@@ -76,6 +76,8 @@ export function PosterGenerator() {
             productImage: imageBase64,
             copyPrompt: copyData.prompt,
             apiThread,
+            shopName: shopName.trim(),
+            posterIndex: index,
           }),
         })
 
@@ -85,7 +87,12 @@ export function PosterGenerator() {
 
         const imageData = await imageRes.json()
         updatePoster(index, {
-          image: { base64: imageData.imageBase64, mimeType: imageData.mimeType },
+          image: {
+            url: imageData.imageUrl,
+            mimeType: imageData.mimeType,
+            storage: imageData.storage || 'inline',
+            path: imageData.path,
+          },
           step: '生成完成！',
           isLoading: false,
         })

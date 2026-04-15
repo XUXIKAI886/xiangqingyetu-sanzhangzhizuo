@@ -16,6 +16,51 @@ interface ImageExportOptions {
   mimeType?: string;
 }
 
+async function convertBlobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result !== 'string') {
+        reject(new Error('无法将 Blob 转换为 base64'))
+        return
+      }
+
+      resolve(result.split(',')[1] || '')
+    }
+    reader.onerror = () => reject(new Error('读取 Blob 失败'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function loadUrlAsBase64(
+  url: string,
+  fallbackMimeType: string
+): Promise<{ base64: string; mimeType: string }> {
+  if (url.startsWith('data:')) {
+    const match = url.match(/^data:(image\/[^;]+);base64,(.+)$/)
+    if (!match) {
+      throw new Error('无效的 data URL')
+    }
+
+    return {
+      mimeType: match[1],
+      base64: match[2],
+    }
+  }
+
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`下载图片失败: HTTP ${response.status}`)
+  }
+
+  const blob = await response.blob()
+  return {
+    mimeType: blob.type || fallbackMimeType,
+    base64: await convertBlobToBase64(blob),
+  }
+}
+
 /**
  * 检测是否在 Tauri 环境中运行
  */
@@ -181,6 +226,24 @@ export async function exportBase64Image(
 }
 
 /**
+ * 导出 URL 图片 - 支持浏览器和 Tauri 双环境
+ */
+export async function exportImageFromUrl(
+  url: string,
+  options: ImageExportOptions = {}
+): Promise<boolean> {
+  const {
+    mimeType = 'image/png',
+  } = options
+
+  const imageData = await loadUrlAsBase64(url, mimeType)
+  return exportBase64Image(imageData.base64, {
+    ...options,
+    mimeType: imageData.mimeType || mimeType,
+  })
+}
+
+/**
  * 批量导出 Base64 图片 - 支持浏览器和 Tauri 双环境
  */
 export async function exportBase64ImagesBatch(
@@ -235,5 +298,43 @@ export async function exportBase64ImagesBatch(
   } catch (error) {
     console.error('批量导出失败:', error);
     throw error;
+  }
+}
+
+/**
+ * 批量导出 URL 图片 - 支持浏览器和 Tauri 双环境
+ */
+export async function exportImageUrlsBatch(
+  images: Array<{ url: string; filename: string; mimeType?: string }>,
+  options: { title?: string } = {}
+): Promise<boolean> {
+  const { title = '保存图片' } = options
+
+  try {
+    if (!isTauriEnvironment()) {
+      for (const img of images) {
+        await exportImageFromUrl(img.url, {
+          filename: img.filename,
+          mimeType: img.mimeType || 'image/png',
+        })
+        await new Promise(r => setTimeout(r, 300))
+      }
+      console.log('✅ [浏览器] 批量导出成功:', images.length, '张图片')
+      return true
+    }
+
+    for (const img of images) {
+      await exportImageFromUrl(img.url, {
+        filename: img.filename,
+        mimeType: img.mimeType || 'image/png',
+        title,
+      })
+    }
+
+    console.log('✅ [Tauri] 批量保存完成!')
+    return true
+  } catch (error) {
+    console.error('批量导出失败:', error)
+    throw error
   }
 }

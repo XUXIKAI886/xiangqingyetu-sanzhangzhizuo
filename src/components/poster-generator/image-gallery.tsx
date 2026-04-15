@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Download, ExternalLink, ImageIcon, Sparkles, FolderDown, Copy, Check } from 'lucide-react'
 import type { PosterState } from '@/types/poster'
-import { exportBase64Image, exportBase64ImagesBatch } from '@/lib/tauri-image-export'
+import { exportImageFromUrl, exportImageUrlsBatch } from '@/lib/tauri-image-export'
 import { copyToClipboard } from '@/lib/tauri-clipboard'
 import { POSTER_TYPES } from '@/types/poster'
 
@@ -57,7 +57,7 @@ export function ImageGallery({ posters, shopName }: ImageGalleryProps) {
   const handleDownload = async (poster: PosterState, index: number) => {
     if (!poster.image) return
     const filename = `${shopName || '海报'}_详情页${index + 1}.png`
-    await exportBase64Image(poster.image.base64, {
+    await exportImageFromUrl(poster.image.url, {
       filename,
       mimeType: poster.image.mimeType
     })
@@ -65,11 +65,11 @@ export function ImageGallery({ posters, shopName }: ImageGalleryProps) {
 
   const handleBatchDownload = async () => {
     const images = postersWithImages.map(({ poster, index }) => ({
-      base64: poster.image!.base64,
+      url: poster.image!.url,
       filename: `${shopName || '海报'}_详情页${index + 1}.png`,
       mimeType: poster.image!.mimeType
     }))
-    await exportBase64ImagesBatch(images)
+    await exportImageUrlsBatch(images)
   }
 
   return (
@@ -104,7 +104,7 @@ export function ImageGallery({ posters, shopName }: ImageGalleryProps) {
             >
               <div className="relative bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
                 <img
-                  src={`data:${poster.image!.mimeType};base64,${poster.image!.base64}`}
+                  src={poster.image!.url}
                   alt={`详情页 ${index + 1}`}
                   className="w-full h-auto object-contain transition-transform duration-500 group-hover:scale-105"
                 />
@@ -120,7 +120,7 @@ export function ImageGallery({ posters, shopName }: ImageGalleryProps) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => poster.image?.base64 && window.open(poster.image.base64, '_blank')}
+                      onClick={() => poster.image?.url && window.open(poster.image.url, '_blank')}
                       className="py-3 px-4 bg-white/20 backdrop-blur-sm text-white font-medium rounded-xl hover:bg-white/30 transition-colors flex items-center justify-center border border-white/20"
                     >
                       <ExternalLink size={16} />

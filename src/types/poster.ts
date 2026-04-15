@@ -5,8 +5,10 @@ export interface PosterCopy {
 }
 
 export interface PosterImage {
-  base64: string
+  url: string
   mimeType: string
+  storage: 'oss' | 'inline'
+  path?: string
 }
 
 export interface PosterState {

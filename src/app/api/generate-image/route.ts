@@ -3,10 +3,29 @@ import { fetchWithRetry } from '@/lib/retry';
 import { resolveGenerateImageThreadConfig } from '@/lib/generate-image-thread-config';
 import { buildGenerateImageRequestPayload } from '@/lib/generate-image-request-payload';
 import { extractImageDataFromOpenAIResponse } from '@/lib/openai-image-response';
+import { saveGeneratedImage } from '@/lib/generated-image-storage';
+import { getOSSClient, isOSSEnabled } from '@/lib/oss-client';
+
+export const runtime = 'nodejs';
+export const maxDuration = 300;
+
+async function storeGeneratedImage(params: {
+  base64: string;
+  mimeType: string;
+  shopName: string;
+  posterIndex: number;
+}) {
+  return saveGeneratedImage(params, {
+    isOSSEnabled,
+    uploadBuffer: (buffer, filename, mimeType, folder) =>
+      getOSSClient().uploadBuffer(buffer, filename, mimeType, folder),
+    randomId: () => crypto.randomUUID(),
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { productImage, copyPrompt, apiThread } = await request.json();
+    const { productImage, copyPrompt, apiThread, shopName = '海报', posterIndex = 0 } = await request.json();
     console.log('图片生成请求, 线路:', apiThread || 'thread1', 'prompt长度:', copyPrompt?.length, '图片长度:', productImage?.length);
 
     if (!productImage || !copyPrompt) {
@@ -78,9 +97,17 @@ ${copyPrompt}
 
     if (threadConfig.apiStyle === 'openai-compatible') {
       const imageData = extractImageDataFromOpenAIResponse(data);
+      const storedImage = await storeGeneratedImage({
+        base64: imageData.base64,
+        mimeType: imageData.mimeType,
+        shopName,
+        posterIndex,
+      });
       return NextResponse.json({
-        imageBase64: imageData.base64,
-        mimeType: imageData.mimeType
+        imageUrl: storedImage.url,
+        mimeType: storedImage.mimeType,
+        storage: storedImage.storage,
+        path: storedImage.path,
       });
     }
 
@@ -136,10 +163,18 @@ ${copyPrompt}
     }
 
     console.log('成功获取图片, mime_type:', imageData.mimeType || imageData.mime_type);
+    const storedImage = await storeGeneratedImage({
+      base64: imageData.data,
+      mimeType: imageData.mimeType || imageData.mime_type || 'image/png',
+      shopName,
+      posterIndex,
+    });
 
     return NextResponse.json({
-      imageBase64: imageData.data,
-      mimeType: imageData.mimeType || imageData.mime_type || 'image/png'
+      imageUrl: storedImage.url,
+      mimeType: storedImage.mimeType,
+      storage: storedImage.storage,
+      path: storedImage.path,
     });
 
   } catch (error) {
