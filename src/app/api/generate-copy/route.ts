@@ -1,35 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithRetry } from '@/lib/retry';
 import { PROMPT_TEMPLATE } from '@/lib/prompt-template';
-import { parseCopyJsonText, parseCopyResponseText } from '@/lib/copy-response-parser';
+import { parseCopyResponseText, parseCopyText } from '@/lib/copy-response-parser';
 import { resolveGenerateCopyThreadConfig } from '@/lib/generate-copy-thread-config';
 import { buildGenerateCopyRequestPayload } from '@/lib/generate-copy-request-payload';
 import { extractCopyTextFromOpenAIResponse } from '@/lib/openai-copy-response';
-
-// 三种海报类型的描述
-const POSTER_TYPES = [
-  { name: '主KV视觉', desc: 'Hero Shot - 产品主图展示，突出品牌和核心卖点' },
-  { name: '生活场景', desc: 'Lifestyle - 产品使用场景，展示实际使用效果' },
-  { name: '工艺展示', desc: 'Process/Concept - 制作工艺、食材来源、品质保证' }
-];
-
-function getSystemPrompt(posterIndex: number): string {
-  const posterType = POSTER_TYPES[posterIndex] || POSTER_TYPES[0];
-  return `${PROMPT_TEMPLATE}
-
----
-【重要】本次任务只需要生成第${posterIndex + 1}张海报「${posterType.name}」的内容。
-海报类型说明：${posterType.desc}
-
-输出格式必须为JSON：
-{
-  "title": "海报标题",
-  "content": "详细的文案内容（至少200字）",
-  "prompt": "完整的图片生成提示词（中英文，至少500字）"
-}
-
-只输出JSON，不要输出其他内容。`;
-}
+import {
+  buildGenerateCopySystemPrompt,
+  resolveCopyPosterType,
+} from '@/lib/generate-copy-system-prompt';
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,8 +28,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `${threadConfig.providerName} 未配置` }, { status: 500 });
     }
 
-    const systemPrompt = getSystemPrompt(posterIndex);
-    const posterType = POSTER_TYPES[posterIndex] || POSTER_TYPES[0];
+    const systemPrompt = buildGenerateCopySystemPrompt({
+      posterIndex,
+      apiStyle: threadConfig.apiStyle,
+      promptTemplate: PROMPT_TEMPLATE,
+    });
+    const posterType = resolveCopyPosterType(posterIndex);
     const userPrompt = `店铺名称：${shopName}\n请分析这个产品图片，生成第${posterIndex + 1}张「${posterType.name}」详情页的文案和提示词。`;
     const requestPayload = buildGenerateCopyRequestPayload({
       config: threadConfig,
@@ -60,6 +43,7 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('开始调用 API, 生成海报:', posterType.name);
+    console.log('当前文案模型:', threadConfig.modelName);
     const endpointUrl = threadConfig.apiStyle === 'gemini-native'
       ? `${threadConfig.endpointUrl}?key=${threadConfig.apiKey}`
       : threadConfig.endpointUrl;
@@ -96,7 +80,7 @@ export async function POST(request: NextRequest) {
 
       try {
         const responseText = extractCopyTextFromOpenAIResponse(responseJson);
-        parsed = parseCopyJsonText(responseText);
+        parsed = parseCopyText(responseText);
       } catch (error) {
         console.error('解析 OpenAI 文案响应失败:', error);
         console.error('OpenAI 文案原始响应预览:', JSON.stringify(responseJson).substring(0, 500));
