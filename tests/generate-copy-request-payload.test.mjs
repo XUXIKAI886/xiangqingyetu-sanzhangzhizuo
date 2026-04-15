@@ -84,5 +84,8 @@ test('文案线路2应构造 OpenAI 兼容的图文对话请求体', () => {
     ],
     max_tokens: 4096,
     temperature: 0.7,
+    response_format: {
+      type: 'json_object',
+    },
   })
 })

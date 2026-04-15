@@ -47,6 +47,9 @@ export function buildGenerateCopyRequestPayload({
       ],
       max_tokens: 4096,
       temperature: 0.7,
+      response_format: {
+        type: 'json_object',
+      },
     }
   }
 

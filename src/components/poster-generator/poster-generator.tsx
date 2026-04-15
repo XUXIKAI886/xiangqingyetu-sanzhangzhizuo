@@ -9,6 +9,7 @@ import type { PosterState } from '@/types/poster'
 import { createInitialPosterState } from '@/types/poster'
 import { GenerateImageThreadSelector } from './generate-image-thread-selector'
 import type { GenerateImageApiThread } from '@/lib/generate-image-thread-config'
+import { readApiErrorMessage } from '@/lib/api-error-message'
 
 export function PosterGenerator() {
   const [shopName, setShopName] = useState('')
@@ -60,7 +61,9 @@ export function PosterGenerator() {
         })
 
         if (!copyRes.ok) {
-          throw new Error('文案生成失败')
+          const message = await readApiErrorMessage(copyRes, '文案生成失败')
+          window.alert(message)
+          throw new Error(message)
         }
 
         const copyData = await copyRes.json()
