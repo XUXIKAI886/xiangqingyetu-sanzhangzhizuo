@@ -80,7 +80,7 @@ export function GenerateImageThreadSelector({
           </div>
           <p className="text-sm text-gray-700">{thread1?.name || '云雾生成'}</p>
           <p className="text-xs text-gray-500 mt-1">
-            {thread1?.description || '文案+图片均使用 Gemini 原生格式'}
+            {thread1?.description || '默认线路，文案+图片同步生成'}
           </p>
         </button>
 
@@ -110,7 +110,7 @@ export function GenerateImageThreadSelector({
           </div>
           <p className="text-sm text-gray-700">{thread2?.name || '128API 生成'}</p>
           <p className="text-xs text-gray-500 mt-1">
-            {thread2?.description || 'OpenAI 兼容格式'}
+            {thread2?.description || '备用线路，OpenAI 兼容格式'}
           </p>
         </button>
       </div>

@@ -99,7 +99,7 @@ export function getGenerateImageThreadAvailability(
     thread1: {
       available: Boolean(env.YUNWU_API_KEY_COPY && env.YUNWU_API_KEY_IMAGE),
       name: '云雾图片生成',
-      description: '默认线路，文案+图片均走云雾 Gemini 原生格式',
+      description: '默认线路，文案+图片同步生成',
     },
     thread2: {
       available: Boolean(
@@ -107,7 +107,7 @@ export function getGenerateImageThreadAvailability(
           env.GENERATE_IMAGE_THREAD2_API_KEY
       ),
       name: '128API 图片生成',
-      description: `备用线路，OpenAI 兼容格式（默认模型：${DEFAULT_GENERATE_IMAGE_THREAD2_MODEL}）`,
+      description: '备用线路，OpenAI 兼容格式',
     },
   }
 }
