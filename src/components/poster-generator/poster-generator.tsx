@@ -7,11 +7,14 @@ import { PosterCard } from './poster-card'
 import { ImageGallery } from './image-gallery'
 import type { PosterState } from '@/types/poster'
 import { createInitialPosterState } from '@/types/poster'
+import { GenerateImageThreadSelector } from './generate-image-thread-selector'
+import type { GenerateImageApiThread } from '@/lib/generate-image-thread-config'
 
 export function PosterGenerator() {
   const [shopName, setShopName] = useState('')
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageBase64, setImageBase64] = useState<string | null>(null)
+  const [apiThread, setApiThread] = useState<GenerateImageApiThread>('thread1')
   const [posters, setPosters] = useState<PosterState[]>([
     createInitialPosterState(),
     createInitialPosterState(),
@@ -52,6 +55,7 @@ export function PosterGenerator() {
             productImage: imageBase64,
             shopName: shopName.trim(),
             posterIndex: index,
+            apiThread,
           }),
         })
 
@@ -71,6 +75,7 @@ export function PosterGenerator() {
           body: JSON.stringify({
             productImage: imageBase64,
             copyPrompt: copyData.prompt,
+            apiThread,
           }),
         })
 
@@ -92,7 +97,7 @@ export function PosterGenerator() {
         })
       }
     },
-    [imageBase64, shopName, updatePoster]
+    [apiThread, imageBase64, shopName, updatePoster]
   )
 
   // 顺序生成所有海报
@@ -173,6 +178,9 @@ export function PosterGenerator() {
 
             {/* 一键生成按钮 */}
             <div className="mt-10 pt-8 border-t border-gray-100">
+              <div className="mb-6">
+                <GenerateImageThreadSelector value={apiThread} onChange={setApiThread} />
+              </div>
               <button
                 type="button"
                 onClick={generateAll}

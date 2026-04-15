@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithRetry } from '@/lib/retry';
 import { PROMPT_TEMPLATE } from '@/lib/prompt-template';
-import { parseCopyResponseText } from '@/lib/copy-response-parser';
-
-const API_URL = 'https://yunwu.ai/v1beta/models/gemini-3-flash-preview:streamGenerateContent';
+import { parseCopyJsonText, parseCopyResponseText } from '@/lib/copy-response-parser';
+import { resolveGenerateCopyThreadConfig } from '@/lib/generate-copy-thread-config';
+import { buildGenerateCopyRequestPayload } from '@/lib/generate-copy-request-payload';
+import { extractCopyTextFromOpenAIResponse } from '@/lib/openai-copy-response';
 
 // 三种海报类型的描述
 const POSTER_TYPES = [
@@ -32,14 +33,8 @@ function getSystemPrompt(posterIndex: number): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const API_KEY = process.env.YUNWU_API_KEY_COPY;
-    if (!API_KEY) {
-      console.error('YUNWU_API_KEY_COPY 环境变量未配置');
-      return NextResponse.json({ error: 'API Key 未配置' }, { status: 500 });
-    }
-
-    const { productImage, shopName, posterIndex = 0 } = await request.json();
-    console.log('收到请求, 店铺名:', shopName, '海报索引:', posterIndex, '图片长度:', productImage?.length);
+    const { productImage, shopName, posterIndex = 0, apiThread } = await request.json();
+    console.log('收到请求, 线路:', apiThread || 'thread1', '店铺名:', shopName, '海报索引:', posterIndex, '图片长度:', productImage?.length);
 
     if (!productImage || !shopName) {
       return NextResponse.json(
@@ -48,36 +43,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const threadConfig = resolveGenerateCopyThreadConfig(apiThread);
+    if (!threadConfig.apiKey) {
+      console.error(`${threadConfig.providerName} 环境变量未配置`);
+      return NextResponse.json({ error: `${threadConfig.providerName} 未配置` }, { status: 500 });
+    }
+
     const systemPrompt = getSystemPrompt(posterIndex);
     const posterType = POSTER_TYPES[posterIndex] || POSTER_TYPES[0];
+    const userPrompt = `店铺名称：${shopName}\n请分析这个产品图片，生成第${posterIndex + 1}张「${posterType.name}」详情页的文案和提示词。`;
+    const requestPayload = buildGenerateCopyRequestPayload({
+      config: threadConfig,
+      productImage,
+      systemPrompt,
+      userPrompt,
+    });
 
     console.log('开始调用 API, 生成海报:', posterType.name);
-    const response = await fetchWithRetry(`${API_URL}?key=${API_KEY}`, {
+    const endpointUrl = threadConfig.apiStyle === 'gemini-native'
+      ? `${threadConfig.endpointUrl}?key=${threadConfig.apiKey}`
+      : threadConfig.endpointUrl;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (threadConfig.apiStyle === 'openai-compatible') {
+      headers.Authorization = `Bearer ${threadConfig.apiKey}`;
+    }
+
+    const response = await fetchWithRetry(endpointUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        contents: [{
-          role: 'user',
-          parts: [
-            {
-              inline_data: {
-                mime_type: 'image/jpeg',
-                data: productImage
-              }
-            },
-            {
-              text: `店铺名称：${shopName}\n请分析这个产品图片，生成第${posterIndex + 1}张「${posterType.name}」详情页的文案和提示词。`
-            }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topP: 0.9
-        }
-      })
+      headers,
+      body: JSON.stringify(requestPayload)
     });
 
     console.log('API 响应状态:', response.status);
@@ -91,20 +89,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 读取供应商原始响应，并兼容完整 JSON 与 NDJSON 两种格式
-    const responseText = await response.text();
-    console.log('API 返回原始数据长度:', responseText.length);
-
     let parsed: ReturnType<typeof parseCopyResponseText>;
-    try {
-      parsed = parseCopyResponseText(responseText);
-    } catch (error) {
-      console.error('解析文案响应失败:', error);
-      console.error('文案原始响应预览:', responseText.substring(0, 500));
-      return NextResponse.json(
-        { error: '未获取到生成内容', raw: responseText.substring(0, 500) },
-        { status: 500 }
-      );
+
+    if (threadConfig.apiStyle === 'openai-compatible') {
+      const responseJson = await response.json();
+
+      try {
+        const responseText = extractCopyTextFromOpenAIResponse(responseJson);
+        parsed = parseCopyJsonText(responseText);
+      } catch (error) {
+        console.error('解析 OpenAI 文案响应失败:', error);
+        console.error('OpenAI 文案原始响应预览:', JSON.stringify(responseJson).substring(0, 500));
+        return NextResponse.json(
+          { error: '未获取到生成内容', raw: JSON.stringify(responseJson).substring(0, 500) },
+          { status: 500 }
+        );
+      }
+    } else {
+      // 读取供应商原始响应，并兼容完整 JSON 与 NDJSON 两种格式
+      const responseText = await response.text();
+      console.log('API 返回原始数据长度:', responseText.length);
+
+      try {
+        parsed = parseCopyResponseText(responseText);
+      } catch (error) {
+        console.error('解析文案响应失败:', error);
+        console.error('文案原始响应预览:', responseText.substring(0, 500));
+        return NextResponse.json(
+          { error: '未获取到生成内容', raw: responseText.substring(0, 500) },
+          { status: 500 }
+        );
+      }
     }
 
     console.log('解析成功, 标题:', parsed.title);

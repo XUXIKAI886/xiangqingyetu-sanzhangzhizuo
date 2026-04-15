@@ -56,6 +56,10 @@ function extractJsonBlock(text: string): string {
   return jsonMatch[0]
 }
 
+export function parseCopyJsonText(text: string): CopyResponse {
+  return JSON.parse(extractJsonBlock(text)) as CopyResponse
+}
+
 export function parseCopyResponseText(responseText: string): CopyResponse {
   const parsedObjects: ProviderResponse[] = []
 
@@ -74,5 +78,5 @@ export function parseCopyResponseText(responseText: string): CopyResponse {
     throw new Error('供应商响应中未提取到文本内容')
   }
 
-  return JSON.parse(extractJsonBlock(fullText)) as CopyResponse
+  return parseCopyJsonText(fullText)
 }

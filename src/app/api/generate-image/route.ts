@@ -1,23 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithRetry } from '@/lib/retry';
-
-const API_URL = 'https://yunwu.ai/v1beta/models/gemini-3.1-flash-image-preview:generateContent';
+import { resolveGenerateImageThreadConfig } from '@/lib/generate-image-thread-config';
+import { buildGenerateImageRequestPayload } from '@/lib/generate-image-request-payload';
+import { extractImageDataFromOpenAIResponse } from '@/lib/openai-image-response';
 
 export async function POST(request: NextRequest) {
   try {
-    const API_KEY = process.env.YUNWU_API_KEY_IMAGE;
-    if (!API_KEY) {
-      console.error('YUNWU_API_KEY_IMAGE 环境变量未配置');
-      return NextResponse.json({ error: 'API Key 未配置' }, { status: 500 });
-    }
-
-    const { productImage, copyPrompt } = await request.json();
-    console.log('图片生成请求, prompt长度:', copyPrompt?.length, '图片长度:', productImage?.length);
+    const { productImage, copyPrompt, apiThread } = await request.json();
+    console.log('图片生成请求, 线路:', apiThread || 'thread1', 'prompt长度:', copyPrompt?.length, '图片长度:', productImage?.length);
 
     if (!productImage || !copyPrompt) {
       return NextResponse.json(
         { error: '缺少产品图片或文案提示词' },
         { status: 400 }
+      );
+    }
+
+    const threadConfig = resolveGenerateImageThreadConfig(apiThread);
+    if (!threadConfig.apiKey) {
+      console.error(`${threadConfig.providerName} 环境变量未配置`);
+      return NextResponse.json(
+        { error: `${threadConfig.providerName} 未配置` },
+        { status: 500 }
       );
     }
 
@@ -38,33 +42,28 @@ ${copyPrompt}
 
 请直接生成图片，不需要文字回复。`;
 
-    const response = await fetchWithRetry(`${API_URL}?key=${API_KEY}`, {
+    const requestPayload = buildGenerateImageRequestPayload({
+      config: threadConfig,
+      productImage,
+      copyPrompt: imageGenerationPrompt,
+    });
+
+    const endpointUrl = threadConfig.apiStyle === 'gemini-native'
+      ? `${threadConfig.endpointUrl}?key=${threadConfig.apiKey}`
+      : threadConfig.endpointUrl;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (threadConfig.apiStyle === 'openai-compatible') {
+      headers.Authorization = `Bearer ${threadConfig.apiKey}`;
+    }
+
+    const response = await fetchWithRetry(endpointUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [
-            { text: imageGenerationPrompt },
-            {
-              inline_data: {
-                mime_type: 'image/jpeg',
-                data: productImage
-              }
-            }
-          ]
-        }],
-        generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE'],
-          imageConfig: {
-            aspectRatio: '9:16',
-            imageSize: '2K'
-          },
-          thinkingConfig: {
-            thinkingBudget: 0
-          }
-        }
-      })
+      headers,
+      body: JSON.stringify(requestPayload)
     });
 
     console.log('图片 API 响应状态:', response.status);
@@ -76,6 +75,14 @@ ${copyPrompt}
     }
 
     const data = await response.json();
+
+    if (threadConfig.apiStyle === 'openai-compatible') {
+      const imageData = extractImageDataFromOpenAIResponse(data);
+      return NextResponse.json({
+        imageBase64: imageData.base64,
+        mimeType: imageData.mimeType
+      });
+    }
 
     // 详细日志输出
     console.log('=== 图片API完整响应 ===');
