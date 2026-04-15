@@ -12,7 +12,7 @@ function toDataUrl(base64: string): string {
     return base64
   }
 
-  return `data:image/png;base64,${base64}`
+  return `data:image/jpeg;base64,${base64}`
 }
 
 export function buildGenerateCopyRequestPayload({

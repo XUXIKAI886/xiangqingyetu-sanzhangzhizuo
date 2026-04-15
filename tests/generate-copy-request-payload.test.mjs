@@ -76,7 +76,7 @@ test('文案线路2应构造 OpenAI 兼容的图文对话请求体', () => {
           {
             type: 'image_url',
             image_url: {
-              url: 'data:image/png;base64,ZmFrZS1iYXNlNjQ=',
+              url: 'data:image/jpeg;base64,ZmFrZS1iYXNlNjQ=',
             },
           },
         ],

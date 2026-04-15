@@ -69,13 +69,13 @@ test('线路2应构造 OpenAI 兼容的双图输入请求体', () => {
           {
             type: 'image_url',
             image_url: {
-              url: 'data:image/png;base64,ZmFrZS1iYXNlNjQ=',
+              url: 'data:image/jpeg;base64,ZmFrZS1iYXNlNjQ=',
             },
           },
           {
             type: 'image_url',
             image_url: {
-              url: 'data:image/png;base64,ZmFrZS1iYXNlNjQ=',
+              url: 'data:image/jpeg;base64,ZmFrZS1iYXNlNjQ=',
             },
           },
         ],
